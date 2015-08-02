@@ -63,13 +63,14 @@
         //Set up the queue so that all the stuff shows up at the same time. Also, the code is cleaner
         queue()
             .defer(d3.json, "us-10m.json")
-            .defer(d3.csv,"marketData_small.csv")
+            // .defer(d3.csv,"marketData_small.csv")
+            .defer(d3.csv,"data/ikeas.csv")
             .await(ready);
 
         function ready(error, us, markets) {
-
+            console.log(markets)
             vertices = markets.map(function(d) {
-                return projection([+d.x,+d.y]);
+                return projection([+d.y,+d.x]);
             });
 
             var inFrame = [];
@@ -79,6 +80,7 @@
                 }
             });
             vertices = inFrame;
+            console.log(vertices)
 
             g.append("g")
                 .attr("id", "states")

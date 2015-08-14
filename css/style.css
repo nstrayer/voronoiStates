@@ -1,9 +1,5 @@
-.blurred {
-  -webkit-filter: blur(5px);
-    -moz-filter: blur(5px);
-    -ms-filter: blur(5px);
-    -o-filter: blur(5px);
-    filter: blur(5px);
+circle {
+    pointer-events: none;
 }
 
 #title {
@@ -56,6 +52,11 @@ path {
 #states {
   fill: #aaa;
   fill-opacity:0.3;
+}
+
+.limits {
+    fill: #aaa;
+    fill-opacity:0.3;
 }
 
 #state-borders {

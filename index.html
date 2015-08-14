@@ -1,17 +1,12 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<style>
-    circle {
-        pointer-events: none;
-    }
-</style>
 
 <body>
-    <script type="text/javascript" src="jquery.min.js"></script>
+    <script type="text/javascript" src="js/jquery.min.js"></script>
     <script src="http://d3js.org/d3.v3.min.js"></script>
     <script src="http://d3js.org/topojson.v1.min.js"></script>
     <script src="http://d3js.org/queue.v1.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" type="text/css" href="css/style.css">
     <div id = "viz"></div>
     <script>
         d3.selection.prototype.moveToFront = function() {
@@ -26,7 +21,6 @@
             colors = ['rgb(166,206,227)','rgb(31,120,180)','rgb(178,223,138)','rgb(51,160,44)','rgb(251,154,153)','rgb(227,26,28)','rgb(253,191,111)','rgb(255,127,0)','rgb(202,178,214)','rgb(106,61,154)','rgb(255,255,153)','rgb(177,89,40)'];
 
         var voronoi = d3.geom.voronoi()
-            .clipExtent([ [0, 0], [width, height] ]);
 
         var svg = d3.select("#viz").append("svg")
             .attr("width", width)
@@ -38,39 +32,39 @@
             .scale(width * 1.025)
             .translate([width / 2, height / 2]);
 
+        var projection = d3.geo.mercator()
+            .scale(1000)
+            .center([-109, 43]);
+
         var path = d3.geo.path()
             .projection(projection);
 
         var g = svg.append("g")
 
-        function redraw() {
-            vPath = vPath
-                .data(voronoi(vertices), polygon);
-
-            vPath.exit().remove();
-
-            vPath.enter().append("path")
-                .attr("d", polygon)
-                .style("fill", function(d,i){return colors[i%11]});
-
-            vPath.order();
-        }
-
-        function polygon(d) {
-            if (d) return "M" + d.join("L") + "Z";
-        }
-
         //Set up the queue so that all the stuff shows up at the same time. Also, the code is cleaner
         queue()
-            .defer(d3.json, "us-10m.json")
-            // .defer(d3.csv,"marketData_small.csv")
-            .defer(d3.csv,"data/ikeas.csv")
+            .defer(d3.json, "data/us-10m.json")
+            // .defer(d3.csv,"data/ikeas.csv")
+            .defer(d3.csv,"data/marketData_small.csv")
             .await(ready);
 
         function ready(error, us, markets) {
+
+            // us.objects.cb_2013_us_state_20m.geometries =
+            //     us.objects.cb_2013_us_state_20m.geometries.filter(
+            //         function(d){if(["Alaska", "Hawaii", "Puerto Rico"].indexOf(d.id) == -1){return d}}
+            //     )
             console.log(markets)
+
+            var limits   = topojson.feature(us, us.objects.land);
+            var exterior = projectLineString(limits, projection);
+
+            function polygon(d) {
+                return "M" + d.join("L") + "Z";
+            }
+
             vertices = markets.map(function(d) {
-                return projection([+d.y,+d.x]);
+                return projection([+d.x,+d.y]);
             });
 
             var inFrame = [];
@@ -80,24 +74,60 @@
                 }
             });
             vertices = inFrame;
-            console.log(vertices)
 
-            g.append("g")
-                .attr("id", "states")
-                .selectAll(".states")
-                .data(topojson.feature(us, us.objects.states).features)
-                .enter().append("path")
-                .attr("class", "states")
-                .attr("d", path)
+            // g.append("g") //re-enable after land boundries have been implemented
+            //     .attr("id", "states")
+            //     .selectAll(".states")
+            //     .data(topojson.feature(us, us.objects.states).features)
+            //     .enter().append("path")
+            //     .attr("class", "states")
+            //     .attr("d", path)
+
+            // g.append("path")
+            //     .datum(limits)
+            //     .attr("class", "limits")
+            //     .attr("d", path);
 
             svg.selectAll("circle")
                 .data(vertices.slice(1))
                 .enter().append("circle")
                 .attr("transform", function(d) { return "translate(" + d + ")"; })
                 .attr("r", 1)
-                .attr("fill", "black")
+                .attr("fill", "steelblue")
                 .moveToFront()
-                .call(redraw);
+
+            svg.append("g")
+                .attr("class", "land")
+              .selectAll(".voronoi")
+                // .data(voronoi(vertices.map(projection)).map(function(d) {
+                //   // Each voronoi region is a convex polygon, therefore we can use
+                //   // d3.geom.polygon.clip, treating each regino as a clip region, with the
+                //   // projected “exterior” as a subject polygon.
+                //   return d3.geom.polygon(d).clip(exterior.slice());
+                // }))
+                .data(voronoi(vertices), polygon)
+              .enter().append("path")
+                .attr("class", "voronoi")
+                .style("fill", function(d,i){return colors[i%11]})
+                .style("opacity", 0.8)
+                .attr("d", polygon);
         }
+
+        // Extracts a single LineString from the given feature, projected (and
+        // resampled) using the given projection.
+        function projectLineString(feature, projection) {
+          var line;
+          d3.geo.stream(feature, projection.stream({
+            polygonStart: noop,
+            polygonEnd: noop,
+            lineStart: function() { line = []; },
+            lineEnd: noop,
+            point: function(x, y) { line.push([x, y]); },
+            sphere: noop
+          }));
+          return line;
+        }
+
+        function noop() {}
 
     </script>
